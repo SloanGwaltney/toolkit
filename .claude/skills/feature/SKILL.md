@@ -1,0 +1,136 @@
+---
+name: feature
+description: Implement scenarios from features/*.feature that the user names, annotating the entry points with spec annotations, writing unit tests for every scenario annotated with each step, and running the tests before finishing. Use when the user invokes /feature with scenario references.
+argument-hint: <features/x.feature#scenario-id ...>
+disable-model-invocation: true
+---
+
+# feature
+
+Build the scenarios the user names, end to end, so every scenario can be found from the code
+where it starts, and every step from the test that proves it, with a text search.
+
+Arguments: $ARGUMENTS
+
+Before writing code, read `tools/speclint/docs/spec-annotations.md` for the exact annotation format. This skill
+doesn't repeat it.
+
+## 1. Resolve the scenarios
+
+The user passes the scenarios to build. Accept any of these forms:
+
+- `features/job-board.feature#move-card-forward`: one scenario
+- `move-card-forward`: a bare ID. Search `features/` for `@id:move-card-forward`.
+- `features/job-board.feature`: every `@status:not-implemented` scenario in that file
+
+If no arguments were given, list the `@status:not-implemented` scenarios in `features/`, grouped
+by file, and ask which to build. Don't pick for the user.
+
+For each scenario, read it in the `.feature` file and check its status:
+
+| Status            | What to do                                                                 |
+|-------------------|----------------------------------------------------------------------------|
+| `not-implemented` | Build it.                                                                  |
+| `implemented`     | Already built. Ask whether the user wants a change; if so, that's a spec change for the `bdd-feature` skill first. |
+| `deprecated`      | Don't build on it. Tell the user and skip it.                              |
+| `withdrawn`       | Don't build it. Tell the user and skip it.                                 |
+
+If a reference doesn't match any scenario, say so and ask. Never guess an ID.
+
+If a scenario is too vague to build without inventing behavior, ask the user, or suggest
+rewording it with `/bdd-feature`, before writing code. Don't edit `.feature` files yourself in
+this skill, apart from the status change in step 7.
+
+## 2. Gather context
+
+- **Decisions.** Grep `docs/adr/` for each scenario ID and its feature file, and read the ADRs
+  that come up, plus the `universal` ones relevant to the code you'll touch.
+- **Existing code.** Grep for the feature file path to find code and tests already linked to it,
+  and for each step's text, since a step shared with an implemented scenario may already be
+  tested and done.
+- **Shared steps.** Note steps that appear in more than one of the requested scenarios. Implement
+  and test them once, unless different code carries them out in each scenario, in which case
+  scope each test's annotation with the scenario ID (see `tools/speclint/docs/spec-annotations.md`).
+
+## 3. Plan
+
+Before editing, give the user a short plan: for each scenario, the entry point that will carry
+its `@scenario` annotation, and the code it touches. Then proceed unless the plan needs one of
+the following, which must be raised and settled first:
+
+- **A new dependency** (a package, module, or tool). Never install one without asking, and say
+  why it's worth adding over writing the code ourselves.
+- **A decision worth recording**: a real choice between alternatives that later work will build
+  on, like picking a library or a data model trade-off that isn't settled by an existing ADR.
+  Suggest the user run `/adr`. Don't write ADRs yourself. Building something the usual way, like
+  a new table, a read-only view, or a page that follows an existing pattern, isn't a decision, so
+  don't suggest one for it, and don't add ADR notes to PR descriptions.
+
+## 4. Implement
+
+Follow the patterns the codebase already uses. Annotate as you write, not at the end:
+
+- `@scenario [#<id>]` on the **entry point** where the behavior starts. A scenario with more than
+  one entry point gets a `@scenario` at each. If the entry point already has a `@scenario` line,
+  add the new ID to the end of it rather than adding a second line.
+- Use the language's comment syntax (see `tools/speclint/docs/spec-annotations.md`). Each annotation goes on its
+  own comment line.
+
+Don't add step annotations (`@given`, `@when`, and so on) to code. Steps are linked from the tests
+that prove them (step 5).
+
+## 5. Test
+
+Every scenario gets tests, and the tests link the scenario and every one of its steps. Write them
+the way the project's existing tests are written.
+
+In each test:
+
+- `@scenario [#<id>]` on the test function, or on the subtest or `it` block when one function
+  covers several scenarios.
+- `@given` on the setup, `@when` on the action, `@then` / `@and` / `@but` on the assertion, with
+  the exact step text. Every step in every requested scenario must end up annotated in a test.
+
+Test each step where it's carried out: if the code that decides an outcome is separate from the
+code that shows it, test each one there. Also add plain tests, without annotations, for edge cases
+and helpers the scenarios don't cover.
+
+## 6. Verify
+
+Run the project's checks and tests, and fix every failure before finishing. If the project has
+`scripts/check.sh`, that runs them all:
+
+```sh
+bash scripts/check.sh
+```
+
+`speclint` only reports *missing* links for `@status:implemented` scenarios, so while the
+scenarios are still `not-implemented` it won't notice a step you forgot. Check coverage yourself
+by tracing the requested scenarios. List what's missing across a whole feature file, then trace a
+scenario to read its breakdown:
+
+```sh
+go run -C tools/speclint ./cmd/spectrace -root ../.. -missing features/<file>.feature
+go run -C tools/speclint ./cmd/spectrace -root ../.. <scenario-id>
+```
+
+It lists the scenario's entry points and each step's tests, layer by layer, with the same matching
+rules as `speclint`, and exits 1 with a `MISSING:` line for a `@scenario` without a link in code or
+in tests, or a step without a link in tests. With `-missing` it prints only those lines, under each scenario's ID, and a
+count of the scenarios fully linked. Fix every `MISSING:` line. Also read the breakdown: each
+step's tests should sit with the code that actually carries it out.
+
+## 7. Report
+
+Finish with:
+
+- The scenarios built, each with its entry point and test as `file:line`.
+- Test results: the commands run and whether they passed. If something still fails, say so with
+  the output rather than finishing quietly.
+- Anything skipped or left open: deprecated or withdrawn scenarios, questions, and an `/adr`
+  suggestion only if step 3 raised a real decision.
+- A request to the user to confirm the scenarios are built. Don't change a status to
+  `@status:implemented` yourself. When the user confirms, flip the tags, then run
+  `go run -C tools/speclint ./cmd/speclint -root ../..` again. With the scenarios now
+  `implemented`, it checks that every scenario is linked in code and tests, and every step in
+  tests.

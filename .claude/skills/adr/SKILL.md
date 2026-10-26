@@ -1,6 +1,6 @@
 ---
 name: adr
-description: Write an Architecture Decision Record (ADR) capturing the decisions made, why they were made, the alternatives considered, and the features or scenarios they relate to. Pulls the content from the current conversation and asks the user for anything missing. Use when the user wants to record, document, or write up a technical or architectural decision, asks for an ADR, or invokes /adr.
+description: Write an Architecture Decision Record (ADR) capturing the decisions made, why they were made, the alternatives considered, and the features or intents they relate to. Pulls the content from the current conversation and asks the user for anything missing. Use when the user wants to record, document, or write up a technical or architectural decision, asks for an ADR, or invokes /adr.
 disable-model-invocation: true
 ---
 
@@ -9,9 +9,9 @@ disable-model-invocation: true
 Record a decision as a Markdown file in `docs/adr/`. An ADR says what was decided, why, and what
 else was on the table, so a later reader (human or agent) doesn't have to reconstruct it.
 
-Every ADR has a **Related** section that ties it to the specs in `features/`. It uses the same
-`[features/<file>.feature#<id>]` references as code annotations (see `tools/speclint/docs/spec-annotations.md`),
-so grepping a spec file or scenario ID finds the ADRs behind it alongside its code and tests.
+Every ADR has a **Related** section that ties it to the intents in `features/`. It names them by
+the same IDs as code annotations (see `tools/speclint/docs/intents.md`), so grepping an intent ID
+or intent file finds the ADRs behind it alongside its code and tests.
 
 ## File layout
 
@@ -61,28 +61,29 @@ conversation shows none were considered, say so explicitly rather than inventing
 
 This section is what keeps ADRs grep-complete. It's a bullet list in one of two forms.
 
-**Specific.** The decision is about particular features or scenarios. List each one, using the
-exact reference format from `tools/speclint/docs/spec-annotations.md`, followed by its title copied from the
-`.feature` file:
+**Specific.** The decision is about particular features or intents. List each one, followed by
+a short label for people to read:
 
 ```markdown
 ## Related
 
-- [features/call-reminders.feature#cancelled-no-reminder] No reminder for a cancelled call
-- [features/call-reminders.feature#default-lead-time] Reminder fires at the default lead time
-- [features/call-scheduling.feature] Call scheduling
+- [features/call-reminders.md#cancelled-no-reminder] No reminder for a cancelled call
+- [features/call-reminders.md#default-lead-time] Reminder at the lead time
+- [features/call-scheduling.md] Call scheduling
 - [docs/adr/0002-poll-scheduler-every-minute.md] Poll the scheduler every minute
 ```
 
-- Reference a **scenario** as `[features/<file>.feature#<id>] <scenario title>` when the decision
-  affects specific scenarios.
-- Reference a **whole feature** as `[features/<file>.feature] <Feature title>` only when the
-  decision affects the feature as a whole, not a subset of its scenarios.
+- Reference an **intent** as `[features/<file>.md#<id>] <label>` when the decision affects
+  specific intents.
+- Reference a **whole feature** as `[features/<file>.md] <label>` when the decision affects the
+  feature as a whole, not a subset of its intents. This is the usual case for a decision about
+  how a feature is built rather than what it promises.
 - Reference **other ADRs** this one builds on, supersedes, or is constrained by as
   `[docs/adr/NNNN-x.md] <title>`.
-- Read the `.feature` files to get the paths, IDs, and titles. Copy them exactly. Never guess an
-  ID; if the scenario doesn't exist yet, see the workflow below.
-- Don't list `@status:withdrawn` scenarios. List `@status:deprecated` ones only when the decision
+- Read the intent files to get the paths and IDs. Copy them exactly. Never guess an ID; if the
+  intent doesn't exist yet, see the workflow below. The label isn't checked, so keep it short;
+  the intent's own statement is one grep away.
+- Don't list `@status:withdrawn` intents. List `@status:deprecated` ones only when the decision
   is about deprecating or replacing them.
 
 **Universal.** The decision applies across the whole app and isn't tied to any feature, e.g. the
@@ -120,7 +121,7 @@ it's universal.
 1. **New ADRs are `Accepted`** when the conversation shows the decision has been made, and
    `Proposed` when it's still open. Ask if it's unclear.
 2. **Accepted ADRs aren't rewritten.** Don't change the Context, Decisions, Reasons, or
-   Alternatives. You may fix typos, add to Related when a new scenario is covered by an
+   Alternatives. You may fix typos, add to Related when a new intent is covered by an
    existing decision, and append Notes (see below).
 3. **Changing a decision means a new ADR.** Write the new one, list the old one in its Related
    section, and set the old one's status to `Superseded by [docs/adr/NNNN-new.md]`. A note isn't
@@ -137,7 +138,7 @@ Notes are an escape hatch for retrospective remarks on an ADR that's already Acc
 Superseded, or Deprecated): things learned in hindsight that are worth recording on the ADR but
 don't change what was decided. Examples:
 
-- "In hindsight, this should have been `universal` rather than tagging individual scenarios."
+- "In hindsight, this should have been `universal` rather than tagging individual intents."
 - "The 50 ms latency budget in Reasons turned out to be about 200 ms on Windows; the decision
   still holds."
 - "Alternative B was revisited in 2027-03 and rejected again for the same reason."
@@ -159,23 +160,24 @@ Rules:
 ## Notes
 
 - **2026-11-02:** In hindsight this decision applies to every feature that stores data, not
-  just reminders. Related changed from the two `call-reminders.feature` scenarios to
+  just reminders. Related changed from the two `call-reminders.md` intents to
   `universal`.
 ```
 
 ## Workflow
 
 1. **Gather from the conversation.** Pull out the decisions, the reasons, the alternatives that
-   were discussed and why they lost, and which features or scenarios are affected. Use the
+   were discussed and why they lost, and which features or intents are affected. Use the
    user's own reasoning; don't add reasons they didn't give.
 2. **Ask for what's missing.** If the decision, the reasons, or the alternatives aren't in the
    conversation and can't be read from the code, ask a short list of questions in one go. Don't
    fill gaps with plausible-sounding rationale. A missing reason is worse when it's invented.
    It's fine to propose a draft answer in the question for the user to confirm.
-3. **Determine Related.** Search `features/` for the scenarios the decision affects, or decide
-   it's universal using the test above. Search `docs/adr/` for related or superseded ADRs. If
-   the decision is about a feature that has no scenarios yet, say so and offer to write them
-   with the `bdd-feature` skill first, then reference their IDs. Don't leave Related empty.
+3. **Determine Related.** Search `features/` for the intents or intent files the decision
+   affects, or decide it's universal using the test above. Search `docs/adr/` for related or
+   superseded ADRs. If the decision is about a feature that has no intent file yet, say so and
+   offer to write one with the `intent` skill first, then reference it. Don't leave Related
+   empty.
 4. **Write the file** using the template, with today's date and the next number. If it
    supersedes an ADR, update that ADR's status in the same change.
 5. **Report.** Give the path, the status, the Related entries, and anything you assumed or left
@@ -186,11 +188,11 @@ whether it's a note or a superseding ADR (see "Notes"), and follow the matching 
 
 ## Finding ADRs
 
-ADRs for a scenario or feature (search `.` instead of `docs/adr/` to get the code and tests too):
+ADRs for an intent or feature (search `.` instead of `docs/adr/` to get the code and tests too):
 
 ```sh
 grep -rn "#cancelled-no-reminder\]" docs/adr/
-grep -rn "\[features/call-reminders.feature" docs/adr/
+grep -rn "\[features/call-reminders.md" docs/adr/
 ```
 
 App-wide decisions:

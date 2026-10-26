@@ -1,62 +1,62 @@
 ---
 name: feature
-description: Implement scenarios from features/*.feature that the user names, annotating the entry points with spec annotations, writing unit tests for every scenario annotated with each step, and running the tests before finishing. Use when the user invokes /feature with scenario references.
-argument-hint: <features/x.feature#scenario-id ...>
+description: Implement intents from features/*.md that the user names, annotating the entry points that keep them with @intent, writing tests that check each one, and running the checks before finishing. Use when the user invokes /feature with intent references.
+argument-hint: <features/x.md#intent-id ...>
 disable-model-invocation: true
 ---
 
 # feature
 
-Build the scenarios the user names, end to end, so every scenario can be found from the code
-where it starts, and every step from the test that proves it, with a text search.
+Build the intents the user names, end to end, so each one can be found from the code that keeps
+it and the tests that check it with a text search.
 
 Arguments: $ARGUMENTS
 
-Before writing code, read `tools/speclint/docs/spec-annotations.md` for the exact annotation format. This skill
+Before writing code, read `tools/speclint/docs/intents.md` for the annotation format. This skill
 doesn't repeat it.
 
-## 1. Resolve the scenarios
+## 1. Resolve the intents
 
-The user passes the scenarios to build. Accept any of these forms:
+The user passes the intents to build. Accept any of these forms:
 
-- `features/job-board.feature#move-card-forward`: one scenario
+- `features/job-board.md#move-card-forward`: one intent
 - `move-card-forward`: a bare ID. Search `features/` for `@id:move-card-forward`.
-- `features/job-board.feature`: every `@status:not-implemented` scenario in that file
+- `features/job-board.md`: every `@status:not-implemented` intent in that file
 
-If no arguments were given, list the `@status:not-implemented` scenarios in `features/`, grouped
-by file, and ask which to build. Don't pick for the user.
+If no arguments were given, list the `@status:not-implemented` intents in `features/`, grouped by
+file, and ask which to build. Don't pick for the user.
 
-For each scenario, read it in the `.feature` file and check its status:
+For each intent, read it and its file's purpose, and check its status:
 
 | Status            | What to do                                                                 |
 |-------------------|----------------------------------------------------------------------------|
 | `not-implemented` | Build it.                                                                  |
-| `implemented`     | Already built. Ask whether the user wants a change; if so, that's a spec change for the `bdd-feature` skill first. |
+| `implemented`     | Already built. Ask whether the user wants a change; if so, that's a change for the `intent` skill first. |
 | `deprecated`      | Don't build on it. Tell the user and skip it.                              |
 | `withdrawn`       | Don't build it. Tell the user and skip it.                                 |
 
-If a reference doesn't match any scenario, say so and ask. Never guess an ID.
+If a reference doesn't match any intent, say so and ask. Never guess an ID.
 
-If a scenario is too vague to build without inventing behavior, ask the user, or suggest
-rewording it with `/bdd-feature`, before writing code. Don't edit `.feature` files yourself in
-this skill, apart from the status change in step 7.
+An intent states an obligation, not every detail of the behavior. Fill in reasonable details
+yourself, following the codebase's existing patterns and the intent's notes, and list the ones
+you chose in the report. Ask first only when a detail changes what the intent promises, or when
+two reasonable readings would build different things. Don't edit intent files in this skill,
+apart from the status change in step 7.
 
 ## 2. Gather context
 
-- **Decisions.** Grep `docs/adr/` for each scenario ID and its feature file, and read the ADRs
-  that come up, plus the `universal` ones relevant to the code you'll touch.
-- **Existing code.** Grep for the feature file path to find code and tests already linked to it,
-  and for each step's text, since a step shared with an implemented scenario may already be
-  tested and done.
-- **Shared steps.** Note steps that appear in more than one of the requested scenarios. Implement
-  and test them once, unless different code carries them out in each scenario, in which case
-  scope each test's annotation with the scenario ID (see `tools/speclint/docs/spec-annotations.md`).
+- **Intents.** Read the whole intent file, not only the intents you're building: the purpose and
+  the other intents, especially the **Must not** ones, constrain how you build these.
+- **Decisions.** Grep `docs/adr/` for each intent ID and its file, and read the ADRs that come up,
+  plus the `universal` ones relevant to the code you'll touch.
+- **Existing code.** Grep for the IDs of the file's implemented intents to find the entry points
+  and tests already linked to the feature.
 
 ## 3. Plan
 
-Before editing, give the user a short plan: for each scenario, the entry point that will carry
-its `@scenario` annotation, and the code it touches. Then proceed unless the plan needs one of
-the following, which must be raised and settled first:
+Before editing, give the user a short plan: for each intent, the entry point that will carry its
+`@intent` annotation, and the code it touches. Then proceed unless the plan needs one of the
+following, which must be raised and settled first:
 
 - **A new dependency** (a package, module, or tool). Never install one without asking, and say
   why it's worth adding over writing the code ourselves.
@@ -70,30 +70,28 @@ the following, which must be raised and settled first:
 
 Follow the patterns the codebase already uses. Annotate as you write, not at the end:
 
-- `@scenario [#<id>]` on the **entry point** where the behavior starts. A scenario with more than
-  one entry point gets a `@scenario` at each. If the entry point already has a `@scenario` line,
-  add the new ID to the end of it rather than adding a second line.
-- Use the language's comment syntax (see `tools/speclint/docs/spec-annotations.md`). Each annotation goes on its
-  own comment line.
+- `@intent [#<id>]` on each **entry point** that keeps the intent. If the entry point already has
+  an `@intent` line, add the new ID to the end of it rather than adding a second line.
+- Use the language's comment syntax (see `tools/speclint/docs/intents.md`). Each annotation goes on
+  its own comment line.
 
-Don't add step annotations (`@given`, `@when`, and so on) to code. Steps are linked from the tests
-that prove them (step 5).
+If an entry point ends up naming more than four intents, speclint warns. Treat that as a design
+signal: the entry point may be doing too much. Mention it in the report rather than working around
+it.
 
 ## 5. Test
 
-Every scenario gets tests, and the tests link the scenario and every one of its steps. Write them
-the way the project's existing tests are written.
+Every intent gets at least one test that checks it, with `@intent [#<id>]` on the test function,
+or on the subtest or `it` block when one function covers several intents. Write tests the way the
+project's existing ones are written.
 
-In each test:
-
-- `@scenario [#<id>]` on the test function, or on the subtest or `it` block when one function
-  covers several scenarios.
-- `@given` on the setup, `@when` on the action, `@then` / `@and` / `@but` on the assertion, with
-  the exact step text. Every step in every requested scenario must end up annotated in a test.
-
-Test each step where it's carried out: if the code that decides an outcome is separate from the
-code that shows it, test each one there. Also add plain tests, without annotations, for edge cases
-and helpers the scenarios don't cover.
+- **Test the obligation where it's decided.** If the code that decides an outcome is separate from
+  the code that shows it, test each one there, and annotate the test that proves the obligation.
+- **For a Must not intent,** set up the situation where it could be broken and check that it
+  isn't: the cancelled call gets no reminder, the second charge is refused.
+- **Test the details too.** The edge cases, validation, and error handling you filled in during
+  step 4 get ordinary tests without annotations. The intent names the obligation; these tests
+  pin down the rest.
 
 ## 6. Verify
 
@@ -104,33 +102,33 @@ Run the project's checks and tests, and fix every failure before finishing. If t
 bash scripts/check.sh
 ```
 
-`speclint` only reports *missing* links for `@status:implemented` scenarios, so while the
-scenarios are still `not-implemented` it won't notice a step you forgot. Check coverage yourself
-by tracing the requested scenarios. List what's missing across a whole feature file, then trace a
-scenario to read its breakdown:
+`speclint` only reports *missing* links for `@status:implemented` intents, so while the intents
+are still `not-implemented` it won't notice one you forgot. Check each one with `spectrace`, which
+exits 1 with a `MISSING:` line for an intent with no `@intent` link in code or in tests:
 
 ```sh
-go run -C tools/speclint ./cmd/spectrace -root ../.. -missing features/<file>.feature
-go run -C tools/speclint ./cmd/spectrace -root ../.. <scenario-id>
+go run -C tools/speclint ./cmd/spectrace -root ../.. <intent-id>
 ```
 
-It lists the scenario's entry points and each step's tests, layer by layer, with the same matching
-rules as `speclint`, and exits 1 with a `MISSING:` line for a `@scenario` without a link in code or
-in tests, or a step without a link in tests. With `-missing` it prints only those lines, under each scenario's ID, and a
-count of the scenarios fully linked. Fix every `MISSING:` line. Also read the breakdown: each
-step's tests should sit with the code that actually carries it out.
+Or trace the whole file to see every intent at once:
+
+```sh
+go run -C tools/speclint ./cmd/spectrace -root ../.. features/<file>.md
+```
+
+Fix every `MISSING:` line for the intents you built.
 
 ## 7. Report
 
 Finish with:
 
-- The scenarios built, each with its entry point and test as `file:line`.
+- The intents built, each with its entry point and test as `file:line`.
+- The details you chose that the intents didn't state, briefly, so the user can push back.
 - Test results: the commands run and whether they passed. If something still fails, say so with
   the output rather than finishing quietly.
-- Anything skipped or left open: deprecated or withdrawn scenarios, questions, and an `/adr`
-  suggestion only if step 3 raised a real decision.
-- A request to the user to confirm the scenarios are built. Don't change a status to
+- Anything skipped or left open: deprecated or withdrawn intents, questions, limit warnings, and
+  an `/adr` suggestion only if step 3 raised a real decision.
+- A request to the user to confirm the intents are built. Don't change a status to
   `@status:implemented` yourself. When the user confirms, flip the tags, then run
-  `go run -C tools/speclint ./cmd/speclint -root ../..` again. With the scenarios now
-  `implemented`, it checks that every scenario is linked in code and tests, and every step in
-  tests.
+  `go run -C tools/speclint ./cmd/speclint -root ../..` again. With the intents now
+  `implemented`, it checks that each one is linked in code and tests.

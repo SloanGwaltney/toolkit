@@ -37,7 +37,7 @@ Before looking outward, find what's already true here:
   Accepted ADR rejected needs a reason it's different now, and choosing it means a new ADR.
 - **Code.** Find where the choice would land: what uses the thing being replaced, how big the
   change is, and what existing code an option could reuse.
-- **Specs.** If the choice serves a feature, read its scenarios in `features/`, so the options
+- **Specs.** If the choice serves a feature, read its intent file in `features/`, so the options
   are judged against what the feature actually needs.
 
 Some questions are answered by the repo alone. If so, skip the internet research and say why.

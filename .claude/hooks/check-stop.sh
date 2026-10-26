@@ -14,5 +14,5 @@ if printf '%s' "$input" | grep -q '"stop_hook_active": *true'; then
   exit 1
 fi
 
-printf 'scripts/check.sh found problems (for spec links, see tools/speclint/docs/spec-annotations.md). Fix them before finishing, or tell the user why you cannot:\n%s\n' "$out" >&2
+printf 'scripts/check.sh found problems (for intent links, see tools/speclint/docs/intents.md). Fix them before finishing, or tell the user why you cannot:\n%s\n' "$out" >&2
 exit 2

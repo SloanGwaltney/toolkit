@@ -28,7 +28,7 @@ check() {
   fi
 }
 
-# speclint, from the tools/speclint submodule. Remove this line if the project doesn't use specs.
+# speclint, from the tools/speclint submodule. Remove this line if the project doesn't use intents.
 check speclint go run -C tools/speclint ./cmd/speclint -root ../..
 
 # CUSTOMIZE: add the project's checks. Keep them fast enough to run at the end of every turn;
